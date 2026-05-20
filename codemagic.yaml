@@ -1,13 +1,18 @@
 workflows:
-  flutter-workflow:
-    name: Flutter Build
+  flutter-ios:
+    name: Flutter iOS Build
     environment:
       flutter: stable
       xcode: latest
+      cocoapods: default
     scripts:
       - flutter clean
-      - flutter pub get
+      # 使用国内镜像源
+      - export PUB_HOSTED_URL=https://pub.flutter-io.cn
+      - export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
+      # 带重试的 pub get
+      - for i in 1 2 3; do flutter pub get --verbose && break || sleep 5; done
+      - cd ios && pod install && cd ..
       - flutter build ios --release --no-codesign
     artifacts:
-      - build/ios/iphoneos/*.app
       - build/ios/ipa/*.ipa
