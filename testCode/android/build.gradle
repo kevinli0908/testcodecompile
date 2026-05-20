@@ -1,0 +1,32 @@
+allprojects {
+    repositories {
+        // 添加 Flutter 国内镜像（放在最前面，优先使用）
+        maven {
+            url "https://storage.flutter-io.cn/download.flutter.io"
+        }
+        // 备用方案：HTTP 版本（注意 allowInsecureProtocol 设为 true）
+        maven {
+            url "http://download.flutter.io"
+            allowInsecureProtocol = true
+        }
+
+        google()
+        mavenCentral()
+    }
+}
+
+def newBuildDir = rootProject.layout.buildDirectory.dir("../../build").get()
+rootProject.layout.buildDirectory.value(newBuildDir)
+
+subprojects {
+    def newSubprojectBuildDir = newBuildDir.dir(project.name)
+    project.layout.buildDirectory.value(newSubprojectBuildDir)
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}
