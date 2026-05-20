@@ -16,4 +16,7 @@ workflows:
       - if [ -f "ios/Podfile" ]; then cd ios && pod install && cd ..; else echo "No Podfile found, skipping pod install"; fi
       - flutter build ios --release --no-codesign
     artifacts:
-      - build/ios/ipa/*.ipa
+      # 明确指定要保存的产物
+      - build/ios/iphoneos/Runner.app
+      - build/ios/ipa/**/*.app
+      - build/ios/**/*.app
