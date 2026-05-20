@@ -1,0 +1,11 @@
+workflows:
+  ios-workflow:
+    name: iOS Build
+    environment:
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - bundle install
+      - bundle exec fastlane ios build
+    artifacts:
+      - build/ios/ipa/*.ipa
