@@ -17,6 +17,7 @@ workflows:
       - flutter build ios --release --no-codesign
     artifacts:
       # 明确指定要保存的产物
-      - build/ios/iphoneos/Runner.app
-      - build/ios/ipa/**/*.app
-      - build/ios/**/*.app
+      - build/ios/ipa/*.ipa   # 确保 artifacts 包含了 .ipa 文件
+      #- build/ios/iphoneos/Runner.app
+      #- build/ios/ipa/**/*.app
+      #- build/ios/**/*.app
