@@ -24,8 +24,12 @@ class FindMyDeviceCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Color.fromARGB(255,14,23,41),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.15),
+                  width: 1,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.grey.withOpacity(0.1),
@@ -34,27 +38,22 @@ class FindMyDeviceCard extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Column(
+              child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.purpleAccent.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      Icons.location_on,
-                      color: AppTheme.primaryBlue,
-                      size: 32,
+                    child: Image.asset(
+                      'assets/images/icon_002.png',
+                      width: 48,
+                      height: 48,
                     ),
                   ),
-                  const SizedBox(height: 16),
                   const Text(
                     'Find My Device',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: Colors.white,
                     ),
                     textAlign: TextAlign.center,
                   ),

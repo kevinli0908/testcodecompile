@@ -29,7 +29,7 @@ class OmniBluetoothGattCharacteristic {
 
 /// OmniBle - 蓝牙管理类
 class OmniBle {
-  static const String TAG = "OMNI.OTA.OmniBle";
+  static const String TAG = "OMNI.BEE.OmniBle";
 
   // 回调
   OmniBleCallback? _callback;
@@ -39,7 +39,9 @@ class OmniBle {
   BluetoothDevice? _currentDevice;
   BluetoothCharacteristic? _otaCommandChar;
   BluetoothCharacteristic? _otaBlockChar;
+  BluetoothCharacteristic? _ssuCommandChar;
   BluetoothCharacteristic? _batteryChar;
+  BluetoothCharacteristic? _findmeChar;
   int _batteryLevel = 0;
   int _gattState = Defines.STATE_GATT_DISCONNECTED;
 
@@ -47,7 +49,7 @@ class OmniBle {
   bool _findDeviceByName = true;
   // hp 连接速度慢，传输数据多 128 根据mtu来
   // claro 连接速度快，传输 16 根据mtu来
-  String _targetDeviceName = "HP_RC4111801";
+  String _targetDeviceName = "Bee";
   //String _targetDeviceName = "RC_OMNICLAROBR";
   //String _targetDeviceName = "StarHub RC396";
 
@@ -59,6 +61,7 @@ class OmniBle {
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
   StreamSubscription<List<int>>? _commandNotificationSubscription;
   StreamSubscription<List<int>>? _blockNotificationSubscription;
+  StreamSubscription<List<int>>? _ssuCommandNotificationSubscription;
 
   static final OmniBle _instance = OmniBle._internal();
 
@@ -89,6 +92,7 @@ class OmniBle {
     _connectionSubscription?.cancel();
     _commandNotificationSubscription?.cancel();
     _blockNotificationSubscription?.cancel();
+    _ssuCommandNotificationSubscription?.cancel();
     disconnectGatt();
   }
 
@@ -165,6 +169,12 @@ class OmniBle {
       } else if (uuidChar.toLowerCase() ==
           Defines.UUID_OTA_BLOCK.toLowerCase()) {
         characteristic = _otaBlockChar;
+      } else if (uuidChar.toLowerCase() ==
+          Defines.UUID_SSU_CHAR.toLowerCase()) {
+        characteristic = _ssuCommandChar;
+      } else if (uuidChar.toLowerCase() ==
+          Defines.UUID_FINDME_CHAR.toLowerCase()) {
+        characteristic = _findmeChar;
       }
 
       if (characteristic == null) {
@@ -192,6 +202,56 @@ class OmniBle {
       debugPrint("$TAG writeData: write failed - $e");
       return false;
     }
+  }
+
+  /// 写入数据
+  Future<List<int>?> readData(
+      String uuidServ,
+      String uuidChar,
+      ) async {
+    if (_gattState != Defines.STATE_GATT_CONNECTED) {
+      debugPrint("$TAG readData: gatt not connected! state=$_gattState");
+      return null;
+    }
+
+    if (_currentDevice == null) {
+      debugPrint("$TAG readData: device not connected!");
+      return null;
+    }
+
+    try {
+      BluetoothCharacteristic? characteristic;
+
+      if (uuidChar.toLowerCase() == Defines.UUID_OTA_COMMAND.toLowerCase()) {
+        characteristic = _otaCommandChar;
+      } else if (uuidChar.toLowerCase() ==
+          Defines.UUID_OTA_BLOCK.toLowerCase()) {
+        characteristic = _otaBlockChar;
+      } else if (uuidChar.toLowerCase() ==
+          Defines.UUID_SSU_CHAR.toLowerCase()) {
+        characteristic = _ssuCommandChar;
+      } else if (uuidChar.toLowerCase() ==
+          Defines.UUID_FINDME_CHAR.toLowerCase()) {
+        characteristic = _findmeChar;
+      }
+
+      if (characteristic == null) {
+        debugPrint("$TAG readData: characteristic not found!");
+        return null;
+      }
+
+      // 读取值
+      List<int> value = await characteristic.read();
+      print('read success: $value');
+      return value;
+    } catch (e) {
+      debugPrint("$TAG readData: read failed - $e");
+      return null;
+    }
+  }
+
+  Future<void> deviceConnectStatusChanged() async{
+    findOmniRemote();
   }
 
   // ==================== 私有方法 ====================
@@ -257,6 +317,13 @@ class OmniBle {
       autoConnect: false,
     );
 
+/*    await device.connect(
+      license: License.free,
+      timeout: const Duration(seconds: 30),
+      mtu: null,
+      autoConnect: true,
+    );*/
+
     // 监听连接状态
     _connectionSubscription = device.connectionState.listen((state) {
       debugPrint("$TAG onConnectionStateChange: state=$state");
@@ -274,8 +341,12 @@ class OmniBle {
         _currentDevice = null;
         _otaCommandChar = null;
         _otaBlockChar = null;
+        _ssuCommandChar = null;
         _connectionSubscription?.cancel();
         _connectionSubscription = null;
+        _commandNotificationSubscription?.cancel();
+        _blockNotificationSubscription?.cancel();
+        _ssuCommandNotificationSubscription?.cancel();
       }
     });
   }
@@ -288,7 +359,9 @@ class OmniBle {
       final services = await device.discoverServices();
 
       BluetoothService? otaService;
+      BluetoothService? ssuService;
       BluetoothService? batteryService;
+      BluetoothService? findmeService;
       for (var service in services) {
         debugPrint(
           "$TAG discoverServices service UUID:${service.uuid.toString()}",
@@ -300,18 +373,34 @@ class OmniBle {
         }
 
         if (service.uuid.toString().toLowerCase() ==
+            Defines.UUID_SSU_SERV.toLowerCase()) {
+          ssuService = service;
+          //break;
+        }
+
+        if (service.uuid.toString().toLowerCase() ==
             Defines.UUID_BATTERY_SERV.toLowerCase()) {
           batteryService = service;
           //break;
         }
 
-        if (otaService != null && batteryService != null) {
+        if (service.uuid.toString().toLowerCase() ==
+            Defines.UUID_FINDME_SERV.toLowerCase()) {
+          findmeService = service;
+        }
+
+        if (otaService != null && ssuService != null && batteryService != null && findmeService != null) {
           break;
         }
       }
 
-      if (otaService == null) {
-        debugPrint("$TAG discoverServices: OTA UUID not found!");
+      if (otaService == null || ssuService == null) {
+        if(otaService == null){
+          debugPrint("$TAG discoverServices: OTA UUID not found!");
+        }
+        if(ssuService == null){
+          debugPrint("$TAG discoverServices: SSU UUID not found!");
+        }
         _gattState = Defines.STATE_GATT_DISCONNECTING;
         await device.disconnect();
         // 连接下一个设备
@@ -327,6 +416,11 @@ class OmniBle {
         return;
       }
 
+      if (findmeService == null) {
+        debugPrint("$TAG discoverServices: Findme UUID not found!");
+        //return;
+      }
+
       // 查找 OTA Command 和 OTA Block 特征值
       for (var characteristic in otaService.characteristics) {
         final uuidStr = characteristic.uuid.toString().toLowerCase();
@@ -339,11 +433,28 @@ class OmniBle {
         }
       }
 
+      for (var characteristic in ssuService.characteristics) {
+        final uuidStr = characteristic.uuid.toString().toLowerCase();
+        if (uuidStr == Defines.UUID_SSU_CHAR.toLowerCase()) {
+          _ssuCommandChar = characteristic;
+          _notifyList.add(Defines.UUID_SSU_CHAR);
+        }
+      }
+
       for (var characteristic in batteryService.characteristics) {
         final uuidStr = characteristic.uuid.toString().toLowerCase();
         if (uuidStr == Defines.UUID_BATTERY_CHAR.toLowerCase()) {
           _batteryChar = characteristic;
           readBatteryLevel();
+        }
+      }
+
+      if(findmeService != null){
+        for (var characteristic in findmeService.characteristics) {
+          final uuidStr = characteristic.uuid.toString().toLowerCase();
+          if (uuidStr == Defines.UUID_FINDME_CHAR.toLowerCase()) {
+            _findmeChar = characteristic;
+          }
         }
       }
 
@@ -377,14 +488,23 @@ class OmniBle {
       // 监听特征值变化
       final uuidStr = characteristic.uuid.toString().toLowerCase();
       if (uuidStr == Defines.UUID_OTA_COMMAND.toLowerCase()) {
-        _commandNotificationSubscription = characteristic.onValueReceived
+           _commandNotificationSubscription?.cancel();
+          _commandNotificationSubscription = characteristic.onValueReceived
             .listen((value) {
               _onCharacteristicChanged(characteristic, value);
             });
       } else if (uuidStr == Defines.UUID_OTA_BLOCK.toLowerCase()) {
-        _blockNotificationSubscription = characteristic.onValueReceived.listen((
+          _blockNotificationSubscription?.cancel();
+          _blockNotificationSubscription = characteristic.onValueReceived.listen((
           value,
         ) {
+          _onCharacteristicChanged(characteristic, value);
+        });
+      } else if (uuidStr == Defines.UUID_SSU_CHAR.toLowerCase()) {
+          _ssuCommandNotificationSubscription?.cancel();
+          _ssuCommandNotificationSubscription = characteristic.onValueReceived.listen((
+            value,
+            ) {
           _onCharacteristicChanged(characteristic, value);
         });
       }
@@ -400,6 +520,9 @@ class OmniBle {
           } else if (nextUuid == Defines.UUID_OTA_BLOCK &&
               _otaBlockChar != null) {
             await _setNotify(_otaBlockChar!);
+          } else if(nextUuid == Defines.UUID_SSU_CHAR &&
+              _ssuCommandChar != null){
+            await _setNotify(_ssuCommandChar!);
           }
         } else {
           // MTU 交换
@@ -457,6 +580,7 @@ class OmniBle {
     final uuidStr = characteristic.uuid.toString().toLowerCase();
 
     if (uuidStr == Defines.UUID_OTA_COMMAND.toLowerCase()) {
+      debugPrint("$TAG UUID_OTA_COMMAND received: ${_dump(value)}");
       _callback?.onCharacteristicChanged(
         OmniBluetoothGattCharacteristic(
           uuid: Defines.UUID_OTA_COMMAND,
@@ -467,6 +591,11 @@ class OmniBle {
       _callback?.onCharacteristicChanged(
         OmniBluetoothGattCharacteristic(uuid: Defines.UUID_OTA_BLOCK, value: value),
       );
+    } else if (uuidStr == Defines.UUID_SSU_CHAR.toLowerCase()) {
+      debugPrint("$TAG UUID_SSU_CHAR received: ${_dump(value)}");
+      _callback?.onCharacteristicChanged(
+        OmniBluetoothGattCharacteristic(uuid: Defines.UUID_SSU_CHAR, value: value),
+      );
     }
   }
 
@@ -475,6 +604,31 @@ class OmniBle {
   int getGattState() => _gattState;
 
   int getBatteryLevel() => _batteryLevel;
+
+  void openRing(int value){
+    if(_findmeChar != null){
+      List<int> data = [];
+      data.add(value);
+      writeData(Defines.UUID_FINDME_SERV,Defines.UUID_FINDME_CHAR,data);
+      debugPrint("$TAG openRing: openRing is success!");
+    }
+  }
+
+  Future<List<int>?> getRing() async {
+    if(_findmeChar != null){
+      debugPrint("$TAG getRing: getRing is success!");
+      return  await readData(Defines.UUID_FINDME_SERV,Defines.UUID_FINDME_CHAR);
+    }
+  }
+
+  void closeRing(){
+    if(_findmeChar != null){
+      List<int> data = [];
+      data.add(0);
+      writeData(Defines.UUID_FINDME_SERV,Defines.UUID_FINDME_CHAR,data);
+      debugPrint("$TAG closeRing: closeRing is success!");
+    }
+  }
 
   Future<void> readBatteryLevel() async {
     if (_batteryChar == null) {
@@ -489,7 +643,6 @@ class OmniBle {
       }
     }
   }
-
   String _dump(List<int> bytes) {
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
   }

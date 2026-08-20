@@ -39,6 +39,7 @@ dependencies:
     #path: ../../flutter_blue_plus/packages/flutter_blue_plus
 
   shared_preferences: ^2.2.2  # 添加这个依赖
+  fluttertoast: ^8.2.4
 
 dependency_overrides:
   # 强制使用本地版本
@@ -74,6 +75,7 @@ flutter:
   assets:
     - assets/firmware/
     - assets/firmware/firmware-index.json
+    - assets/images/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

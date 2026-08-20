@@ -17,8 +17,10 @@
     <!-- legacy for Android 9 or lower -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="28" />
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
     <application
-        android:label="flutter_bee_project"
+        android:label="Bee Companion App"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -43,6 +45,18 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".MyService"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+        </service>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

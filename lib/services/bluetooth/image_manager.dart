@@ -19,7 +19,7 @@ abstract class ImageCallback {
 
 /// 图像管理器 - 管理固件文件
 class ImageManager {
-  static const String TAG = "OMNI.OTA.ImageManager";
+  static const String TAG = "OMNI.BEE.ImageManager";
 
   ImageCallback? _callback;
   final Map<String, Uint8List> _imageMap = {};

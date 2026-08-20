@@ -1,17 +1,38 @@
 package com.omnidevices.flutter_bee_project;
 
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothProfile;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import io.flutter.embedding.android.FlutterActivity;
 import io.flutter.embedding.engine.FlutterEngine;
 import io.flutter.plugins.GeneratedPluginRegistrant;
+import io.flutter.plugin.common.MethodChannel;
+import io.flutter.plugin.common.MethodChannel.Result;
 
 public class MainActivity extends FlutterActivity {
     public static final String TAG = "BEE_MainActivity";
+    private final static String ACTION_CONNECTION_STATE_CHANGED = "android.bluetooth.input.profile.action.CONNECTION_STATE_CHANGED";
+    private static final String CHANNEL = "com.omnidevices/native_channel";
+    private MethodChannel methodChannel;
 
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate: ");
+
+        IntentFilter intentFilter = new IntentFilter(ACTION_CONNECTION_STATE_CHANGED);
+        registerReceiver(bleReceiver, intentFilter);
+    }
 
     //gatt disconnect will changingConfig = 112, so must config three into androidmanifest.xml,else activity will be kill restart
     //ActivityInfo.CONFIG_KEYBOARD 16
@@ -26,6 +47,52 @@ public class MainActivity extends FlutterActivity {
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         Log.d(TAG, "configureFlutterEngine ");
         GeneratedPluginRegistrant.registerWith(flutterEngine);
+        // 创建 MethodChannel
+        methodChannel = new MethodChannel(
+                flutterEngine.getDartExecutor().getBinaryMessenger(),
+                CHANNEL
+        );
+
+        // 设置方法调用处理器（接收来自 Dart 的调用）
+        methodChannel.setMethodCallHandler((call, result) -> {
+            if (call.method.equals("getDataFromDart")) {
+                // 接收 Dart 传来的数据
+                String data = call.argument("data");
+                Log.d(TAG, "Received from Dart: " + data);
+                result.success("Native received: " + data);
+            } else {
+                result.notImplemented();
+            }
+        });
+    }
+
+    // Android 主动调用 Dart 端方法
+    private void callDartMethod(int state) {
+        Log.d(TAG, "callDart connect gatt: ");
+        // 在合适的时机调用，比如收到广播后
+        methodChannel.invokeMethod("onNativeEvent",
+                java.util.Map.of(
+                        "state", state,
+                        "message", "device connect",
+                        "timestamp", System.currentTimeMillis()
+                ),
+                new MethodChannel.Result() {
+                    @Override
+                    public void success(Object result) {
+                        Log.d(TAG, "Dart call success: " + result);
+                    }
+
+                    @Override
+                    public void error(String errorCode, String errorMessage, Object errorDetails) {
+                        Log.e(TAG, "Dart call error: " + errorMessage);
+                    }
+
+                    @Override
+                    public void notImplemented() {
+                        Log.w(TAG, "Dart method no achieve");
+                    }
+                }
+        );
     }
 
     public void onDetachedFromEngine() {
@@ -35,6 +102,8 @@ public class MainActivity extends FlutterActivity {
     @Override
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
+        unregisterReceiver(bleReceiver);
+
         int changingConfig = getChangingConfigurations();
 
         Log.d(TAG, "onDestroy changingConfig = " + changingConfig);
@@ -85,4 +154,26 @@ public class MainActivity extends FlutterActivity {
         }
         super.onDestroy();
     }
+
+        private BroadcastReceiver bleReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                assert intent.getAction() != null;
+
+                int state;
+                switch (intent.getAction()) {
+                    case ACTION_CONNECTION_STATE_CHANGED:
+                        state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1);
+                        Log.d(TAG, "received broadcast ACTION_CONNECTION_STATE_CHANGED " + state);
+                        //if (mCallback != null) mCallback.onDeviceConnectionStateChanged(device, state);
+                        if (state == BluetoothProfile.STATE_CONNECTED) {
+                            callDartMethod(state);
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+        };
 }

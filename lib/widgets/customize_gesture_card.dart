@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
-import '../models/gesture_model.dart';
 import '../theme/app_theme.dart';
-import 'gesture_item_tile.dart';
 
 class CustomizeGestureCard extends StatelessWidget {
-  final List<GestureModel> gestures;
   final VoidCallback onSectionTap;
-  final Function(int, GestureModel) onGestureTap;
+  //final Function(int, GestureModel) onGestureTap;
 
   const CustomizeGestureCard({
     super.key,
-    required this.gestures,
     required this.onSectionTap,
-    required this.onGestureTap,
+    //required this.onGestureTap,
   });
 
   @override
@@ -28,8 +24,13 @@ class CustomizeGestureCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Color.fromARGB(255,14,23,41),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.15),
+                  width: 1,
+                ),
+
                 boxShadow: [
                   BoxShadow(
                     color: Colors.grey.withOpacity(0.1),
@@ -38,27 +39,22 @@ class CustomizeGestureCard extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Column(
+              child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.purpleAccent.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      Icons.gesture,
-                      color: AppTheme.purpleAccent,
-                      size: 32,
+                    child: Image.asset(
+                      'assets/images/icon_001.png',
+                      width: 48,
+                      height: 48,
                     ),
                   ),
-                  const SizedBox(height: 16),
                   const Text(
                     'Customize Gesture',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: Colors.white,
                     ),
                     textAlign: TextAlign.center,
                   ),

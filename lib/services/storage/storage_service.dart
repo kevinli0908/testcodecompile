@@ -12,6 +12,13 @@ class StorageService {
   static const String KEY_DEVICE_NAME = 'device_name';
   static const String KEY_LAST_CONNECTED = 'last_connected';
 
+  static const String KEY_DOUBLE_TAP = 'double_tap';
+  static const String KEY_TRIPLE_PRESS = 'triple_tap';
+  static const String KEY_SWIPE_UP_THREE_SEC = 'swipe_up_three_sec';
+  static const String KEY_SWIPE_DOWN_THREE_SEC = 'swipe_down_three_sec';
+  static const String KEY_SWIPE_LEFT_THREE_SEC = 'swipe_left_three_sec';
+  static const String KEY_SWIPE_RIGHT_THREE_SEC = 'swipe_right_three_sec';
+
   late SharedPreferences _prefs;
 
   Future<void> init() async {
@@ -61,6 +68,54 @@ class StorageService {
 
   bool getLastConnected() {
     return _prefs.getBool(KEY_LAST_CONNECTED) ?? false;
+  }
+
+  Future<void> saveDoubleTap(String value) async {
+    await _prefs.setString(KEY_DOUBLE_TAP, value);
+  }
+
+  String getDoubleTap() {
+    return _prefs.getString(KEY_DOUBLE_TAP) ?? "";
+  }
+
+  Future<void> saveTripleTap(String value) async {
+    await _prefs.setString(KEY_TRIPLE_PRESS, value);
+  }
+
+  String getTripleTap() {
+    return _prefs.getString(KEY_TRIPLE_PRESS) ?? "";
+  }
+
+  Future<void> saveSwipeUpThreeSec(String value) async {
+    await _prefs.setString(KEY_SWIPE_UP_THREE_SEC, value);
+  }
+
+  String getSwipeUpThreeSec() {
+    return _prefs.getString(KEY_SWIPE_UP_THREE_SEC) ?? "";
+  }
+
+  Future<void> saveSwipeDownThreeSec(String value) async {
+    await _prefs.setString(KEY_SWIPE_DOWN_THREE_SEC, value);
+  }
+
+  String getSwipeDownThreeSec() {
+    return _prefs.getString(KEY_SWIPE_DOWN_THREE_SEC) ?? "";
+  }
+
+  Future<void> saveSwipeLeftThreeSec(String value) async {
+    await _prefs.setString(KEY_SWIPE_LEFT_THREE_SEC, value);
+  }
+
+  String getSwipeLeftThreeSec() {
+    return _prefs.getString(KEY_SWIPE_LEFT_THREE_SEC) ?? "";
+  }
+
+  Future<void> saveSwipeRightThreeSec(String value) async {
+    await _prefs.setString(KEY_SWIPE_RIGHT_THREE_SEC, value);
+  }
+
+  String getSwipeRightThreeSec() {
+    return _prefs.getString(KEY_SWIPE_RIGHT_THREE_SEC) ?? "";
   }
 
   // 清除所有数据

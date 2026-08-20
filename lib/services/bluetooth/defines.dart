@@ -6,9 +6,17 @@ class Defines {
   static const String UUID_OTA_COMMAND = "0F3EABD8-C687-42FC-ADCF-208BC2C126B9";
   static const String UUID_OTA_BLOCK = "83573389-10FC-416A-B451-8BE01E37442C";
   static const String UUID_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805F9B34FB";
+
+  static const String UUID_SSU_SERV = "C88D51CB-EFDA-4708-8E72-CD9E79110171";
+  static const String UUID_SSU_CHAR = "EA3DDDCA-CEE7-4ADA-BECF-83E1A94D092A";
   // ==================== 电池服务 UUID ====================
   static const String UUID_BATTERY_SERV = "180F";
   static const String UUID_BATTERY_CHAR = "2A19";
+
+
+  // ==================== findme UUID ====================
+  static const String UUID_FINDME_SERV = "1802";
+  static const String UUID_FINDME_CHAR = "2A06";
 
   // GATT 状态
   static const int STATE_GATT_DISCONNECTED = 0;
@@ -17,7 +25,7 @@ class Defines {
   static const int STATE_GATT_MTU_EXCHANGE = 3;
   static const int STATE_GATT_CONNECTED = 5;
 
-  // 命令头
+  // OTA 命令头
   static const int CMD_HEADER = 0xA0;
   static const int CMD_RESTART_OTA = 0x15;
 
@@ -53,6 +61,22 @@ class Defines {
   static const int MAX_RETRY_TIMES = 2;
   static const int IMAGE_HEADER_LENGTH = 16;
 
+
+  // 手势 设备控制 命令头
+  static const int CMD_DEVICE_HEADER = 0xD0;
+
+  // 命令 STB -> RCU (Host 发送)
+  //D0 2F 00 02 keygroup target
+  static const int CMD_HOST_SET_GESTURE = 0x2F;
+  //D0 4D keygroup
+  static const int CMD_HOST_GET_GESTURE = 0x4D;
+
+  // 命令 STB <- RCU (设备返回)
+  //D0 20 00 01 2F
+  static const int CMD_RCU_RETURN_PING = 0x20;
+  //D0 2F 00 02 keygroup target
+  static const int CMD_RCU_RETURN_GET_GESTURE = 0x2F;
+
   /// 字节数组转整数
   static int bytesToInt(List<int> src, int position, int length, bool isLittleEndian) {
     int res = 0;
@@ -84,6 +108,8 @@ class Defines {
       case CMD_RCU_RETURN_UPGRADE_RESULT: return "RCU_RETURN_UPGRADE_RESULT";
       case CMD_RCU_SET_MAX_TRANSACTION_SIZE: return "RCU_SET_MAX_TRANSACTION_SIZE";
       case CMD_RCU_READY_FOR_RESUME: return "RCU_READY_FOR_RESUME";
+      case CMD_RCU_RETURN_GET_GESTURE: return "RCU_RETURN_GET_GESTURE";
+      case CMD_RCU_RETURN_PING: return "RCU_RETURN_PING";
       default: return "UNKNOWN(0x${cmd.toRadixString(16).padLeft(2, '0')})";
     }
   }
@@ -91,16 +117,16 @@ class Defines {
   /// 获取结果名称
   static String getResultName(int result) {
     switch (result) {
-      case RESULT_RCU_BATTERY_LOW: return "遥控器电量过低";
-      case RESULT_OTA_ONGOING: return "OTA 进行中";
-      case RESULT_INVALID_IMAGE: return "无效的固件镜像";
-      case RESULT_OTA_COMPLETED_SUCCESSFULLY: return "升级成功";
-      case RESULT_IMAGE_SIZE_LIMIT_EXCEEDED: return "固件大小超出限制";
-      case RESULT_CRC_ERROR: return "CRC 校验错误";
-      case RESULT_RCU_ABORTED_OTA: return "遥控器中止升级";
-      case RESULT_NO_OTA_ONGOING: return "没有进行中的 OTA";
-      case RESULT_TIME_OUT: return "操作超时";
-      default: return "未知错误(0x${result.toRadixString(16).padLeft(2, '0')})";
+      case RESULT_RCU_BATTERY_LOW: return "rcu battery low";
+      case RESULT_OTA_ONGOING: return "ota ongoing";
+      case RESULT_INVALID_IMAGE: return "invalid image";
+      case RESULT_OTA_COMPLETED_SUCCESSFULLY: return "ota completed successfully";
+      case RESULT_IMAGE_SIZE_LIMIT_EXCEEDED: return "image size limit exceed";
+      case RESULT_CRC_ERROR: return "crc error";
+      case RESULT_RCU_ABORTED_OTA: return "rcu aborted ota";
+      case RESULT_NO_OTA_ONGOING: return "no ota ongoing";
+      case RESULT_TIME_OUT: return "time out";
+      default: return "unknown error:(0x${result.toRadixString(16).padLeft(2, '0')})";
     }
   }
 }

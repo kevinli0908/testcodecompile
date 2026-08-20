@@ -31,6 +31,17 @@ class AppTheme {
   static const Color errorRed = Color(0xFFF44336);
   static const Color purpleAccent = Color(0xFF9C27B0);
 
+  static const Color background = Color.fromARGB(255, 11, 16, 32);
+  static const Color firstTitle = Color.fromARGB(255, 255, 255, 255);
+  static const Color secondTitle = Color.fromARGB(128, 255, 255, 255);
+  static const Color thirdTitle = Color.fromARGB(128, 255, 255, 255);
+
+  static const Color ble_connect = Color.fromARGB(255, 74, 222, 128);
+  static const Color ble_disconnect = Color.fromARGB(255, 248, 113, 113);
+
+  static const Color ble_connect_bk = Color.fromARGB(15, 74, 222, 128);
+  static const Color ble_disconnect_bk = Color.fromARGB(15, 248, 113, 113);
+
   static const EdgeInsets defaultPadding = EdgeInsets.all(20.0);
   static const EdgeInsets cardPadding = EdgeInsets.all(16.0);
 }

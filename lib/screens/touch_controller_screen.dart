@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bee_project/screens/quick_start_guide_screen.dart';
 import 'package:flutter_bee_project/screens/scan_screen.dart';
 import 'package:flutter_bee_project/services/bluetooth/ota_manager.dart';
 import 'package:flutter_bee_project/widgets/scan_item_card.dart';
 import '../models/device_model.dart';
-import '../models/gesture_model.dart';
+import '../theme/app_font.dart';
 import '../widgets/customize_gesture_card.dart';
 import '../widgets/device_setting_card.dart';
 import '../widgets/find_my_device_card.dart';
+import '../widgets/quick_start_guide_card.dart';
 import 'device_settings_screen.dart';
 import '../widgets/bottom_tab_bar.dart';
 import '../theme/app_theme.dart';
@@ -28,19 +30,12 @@ enum TabType { gestures, device }
 class _TouchControllerScreenState extends State<TouchControllerScreen>{
   TabType _selectedTab = TabType.gestures;
   DeviceModel _device = DeviceModel.defaultDevice();
-  List<GestureModel> _gestures = GestureModel.defaultGestures();
   //final BleManager _bleManager = BleManager();
 
   @override
   void initState() {
     super.initState();
     //_connectBleDevice();
-  }
-
-  void _updateGesture(int index, GestureModel updatedGesture) {
-    setState(() {
-      _gestures[index] = updatedGesture;
-    });
   }
 
   void _updateDevice(DeviceModel updatedDevice) {
@@ -52,6 +47,12 @@ class _TouchControllerScreenState extends State<TouchControllerScreen>{
   void _switchToDeviceTab() {
     setState(() {
       _selectedTab = TabType.device;
+    });
+  }
+
+  void _switchToGestureTab() {
+    setState(() {
+      _selectedTab = TabType.gestures;
     });
   }
 
@@ -76,7 +77,7 @@ class _TouchControllerScreenState extends State<TouchControllerScreen>{
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -92,23 +93,15 @@ class _TouchControllerScreenState extends State<TouchControllerScreen>{
                       const SizedBox(height: 32),
 
                       CustomizeGestureCard(
-                        gestures: _gestures,
                         onSectionTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => CustomizeGestureScreen(
-                                gestures: _gestures,
-                                onGesturesUpdated: (updatedGestures) {
-                                  setState(() {
-                                    _gestures = updatedGestures;
-                                  });
-                                },
-                              ),
+                              builder: (context) => const CustomizeGesturePage(),
                             ),
                           );
                         },
-                        onGestureTap: (index, gesture) {
+/*                        onGestureTap: (index, gesture) {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -119,9 +112,9 @@ class _TouchControllerScreenState extends State<TouchControllerScreen>{
                               ),
                             ),
                           );
-                        },
+                        },*/
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 16),
                       FindMyDeviceCard(
                         onSectionTap: () {
                           Navigator.push(
@@ -142,46 +135,46 @@ class _TouchControllerScreenState extends State<TouchControllerScreen>{
                         },
                       ),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 16),
                       DeviceSettingCard(
                         onSwitchToDeviceTab: _switchToDeviceTab, // 新增回调
                       ),
 
-                      const SizedBox(height: 32),
-                      ScanItemCard(
+                      const SizedBox(height: 16),
+                      QuickStartGuide(
                         onSectionTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const ScanScreen(),
+                              builder: (context) => const QuickStartGuidePage(),
+                            ),
+                          );
+                        },
+                        onPlaySound: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Playing sound on device...'),
+                              duration: Duration(seconds: 1),
+                              backgroundColor: AppTheme.primaryBlue,
                             ),
                           );
                         },
                       ),
+
                     ] else ...[
                       DeviceSettingsScreen(
                         device: _device,
-                        onSectionTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DeviceSettingsDetailScreen(
-                                device: _device,
-                                onDeviceUpdated: _updateDevice,
-                              ),
-                            ),
-                          );
-                        },
                         onUpdateDevice: _updateDevice,
+                        onBackToGesture: _switchToGestureTab,
                       ),
                     ],
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+/*            const SizedBox(height: 16),
             Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(0.0),
               child: BottomTabBar(
                 selectedTab: _selectedTab,
                 onTabChanged: (tab) {
@@ -190,7 +183,7 @@ class _TouchControllerScreenState extends State<TouchControllerScreen>{
                   });
                 },
               ),
-            ),
+            ),*/
           ],
         ),
       ),
@@ -205,11 +198,11 @@ class _TouchControllerScreenState extends State<TouchControllerScreen>{
         children: [
           const SizedBox(height: 40),
           const Text(
-            'Touch Controller',
+            'Bee Companion App',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.white,
             ),
             textAlign: TextAlign.center,
           ),
@@ -217,8 +210,8 @@ class _TouchControllerScreenState extends State<TouchControllerScreen>{
           Text(
             'Control your device seamlessly',
             style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
+              fontSize: AppFont.fourthTitleSize,
+              color: AppTheme.thirdTitle,
             ),
             textAlign: TextAlign.center,
           ),

@@ -1,429 +1,458 @@
 import 'package:flutter/material.dart';
-import '../models/gesture_model.dart';
-import '../widgets/gesture_item_tile.dart';
+import 'package:flutter_bee_project/models/GestureMapping.dart';
+import 'package:flutter_bee_project/services/bluetooth/device_control_manager.dart';
+
+import '../services/bluetooth/omni_gatt_manager.dart';
+import '../services/storage/storage_service.dart';
 import '../theme/app_theme.dart';
 
-class CustomizeGestureScreen extends StatefulWidget {
-  final List<GestureModel> gestures;
-  final Function(List<GestureModel>) onGesturesUpdated;
-
-  const CustomizeGestureScreen({
-    super.key,
-    required this.gestures,
-    required this.onGesturesUpdated,
-  });
+class CustomizeGesturePage extends StatefulWidget {
+  const CustomizeGesturePage({super.key});
 
   @override
-  State<CustomizeGestureScreen> createState() => _CustomizeGestureScreenState();
+  State<CustomizeGesturePage> createState() => _CustomizeGesturePageState();
 }
 
-class _CustomizeGestureScreenState extends State<CustomizeGestureScreen> {
-  late List<GestureModel> _gestures;
+class _CustomizeGesturePageState extends State<CustomizeGesturePage> implements DeviceControlCallback{
+   late List<GestureItem> _gestures;
+   late int _connectStatus;
+   int? _expandedIndex;
 
   @override
   void initState() {
+    // TODO: implement initState
     super.initState();
-    _gestures = List.from(widget.gestures);
+    DeviceControlManager.instance.registerCallback(this);
+    _connectStatus = OmniGattManager.instance.getGattState();
+    _gestures = getGestures();
+
+    // 延时500ms后加载
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+            DeviceControlManager.instance.getFirstGestureAction();
+        });
+      }
+    });
   }
+
+   @override
+   void onDeviceNotFound() {
+     // TODO: implement onDeviceNotFound
+
+   }
+
+   @override
+   void onGattConnectionStateChanged(int state) {
+     // TODO: implement onGattConnectionStateChanged
+     if (mounted) {
+       setState(() {
+         _connectStatus = OmniGattManager.instance.getGattState();
+       });
+     }
+   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Customize Gesture'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            height: 1,
-            color: Colors.grey[200],
+        leading: Container(
+          width: 32,
+          height: 32,
+          margin: const EdgeInsets.only(left: 16),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withOpacity(0.06),
+            border: Border.all(color: Colors.white.withOpacity(0.16), width: 1),
+          ),
+          child: IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: ImageIcon(
+              AssetImage('assets/images/icon_004.png'),
+              size: 20,
+              color: Colors.white,
+            ),
+            padding: EdgeInsets.zero,
           ),
         ),
+
+        title: const Text('Customize Gesture'),
+        backgroundColor: AppTheme.background,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+        titleSpacing: 12,
       ),
-      body: Column(
+
+      body: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            color: Colors.purple.withOpacity(0.05),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    Icons.gesture,
-                    color: Colors.purple,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'How gesture customization works',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Tap on any gesture to assign or change its action',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(20),
+          // 主列表
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: ListView.separated(
               itemCount: _gestures.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                return GestureItemTile(
-                  gesture: _gestures[index],
-                  onTap: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AssignActionScreen(
-                          gesture: _gestures[index],
-                        ),
-                      ),
-                    );
-                    if (result != null && result is String) {
-                      setState(() {
-                        _gestures[index] = _gestures[index].copyWith(
-                          assignedAction: result,
-                        );
-                      });
-                    }
-                  },
-                );
+                final item = _gestures[index];
+                final isExpanded = _expandedIndex == index;
+                return _buildGestureCard(item, index, isExpanded);
               },
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  widget.onGesturesUpdated(_gestures);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Gestures saved successfully!'),
-                      backgroundColor: AppTheme.successGreen,
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryBlue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Save Changes',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
+          // 遮罩层（点击关闭）
+          if (_expandedIndex != null)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _expandedIndex = null;
+                });
+              },
+              child: Container(
+                color: Colors.black.withOpacity(0.3),
               ),
             ),
-          ),
+          // 弹出选项浮层
+          if (_expandedIndex != null)
+            _buildPopupOverlay(context, _expandedIndex!),
         ],
       ),
     );
   }
-}
 
-class AssignActionScreen extends StatelessWidget {
-  final GestureModel gesture;
+  Widget _buildGestureCard(GestureItem item, int index, bool isExpanded) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _expandedIndex = _expandedIndex == index ? null : index;
+        });
+      },
 
-  const AssignActionScreen({super.key, required this.gesture});
-
-  final List<Map<String, dynamic>> availableActions = const [
-    {'icon': Icons.camera_alt, 'name': 'Open Camera', 'color': Colors.blue},
-    {'icon': Icons.flashlight_on, 'name': 'Flashlight', 'color': Colors.yellow},
-    {'icon': Icons.volume_up, 'name': 'Volume Up', 'color': Colors.green},
-    {'icon': Icons.volume_down, 'name': 'Volume Down', 'color': Colors.red},
-    {'icon': Icons.skip_next, 'name': 'Next Track', 'color': Colors.purple},
-    {'icon': Icons.skip_previous, 'name': 'Previous Track', 'color': Colors.orange},
-    {'icon': Icons.play_arrow, 'name': 'Play/Pause', 'color': Colors.teal},
-    {'icon': Icons.screenshot, 'name': 'Take Screenshot', 'color': Colors.indigo},
-    {'icon': Icons.home, 'name': 'Go Home', 'color': Colors.grey},
-    {'icon': Icons.notifications, 'name': 'Open Notifications', 'color': Colors.cyan},
-    {'icon': Icons.settings, 'name': 'Open Settings', 'color': Colors.deepPurple},
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: Text('Assign Action for ${gesture.name}'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            color: Colors.blue.withOpacity(0.05),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    gesture.icon,
-                    color: Colors.blue,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        gesture.name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        gesture.description,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+    child: SizedBox(
+    height: 70, // 🔑 固定高度
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        decoration: BoxDecoration(
+          color: isExpanded ? const Color(0xFF1A2332) : const Color(0xFF111827),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isExpanded
+                ? Colors.blue.shade400.withOpacity(0.6)
+                : Colors.white.withOpacity(0.06),
+            width: isExpanded ? 2 : 1,
           ),
-          const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            child: Row(
-              children: [
-                Icon(Icons.lightbulb_outline, size: 20, color: Colors.grey),
-                SizedBox(width: 8),
-                Text(
-                  'Select an action to assign to this gesture',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: availableActions.length,
-              itemBuilder: (context, index) {
-                final action = availableActions[index];
-                final isSelected = gesture.assignedAction == action['name'];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: (action['color'] as Color).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        action['icon'] as IconData,
-                        color: action['color'] as Color,
-                        size: 24,
-                      ),
-                    ),
-                    title: Text(
-                      action['name'] as String,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? const Icon(Icons.check_circle, color: Colors.green)
-                        : null,
-                    onTap: () {
-                      Navigator.pop(context, action['name']);
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class GestureDetailScreen extends StatelessWidget {
-  final GestureModel gesture;
-  final int index;
-  final Function(int, GestureModel) onGestureUpdated;
-
-  const GestureDetailScreen({
-    super.key,
-    required this.gesture,
-    required this.index,
-    required this.onGestureUpdated,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: Text(gesture.name),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        gesture.icon,
-                        color: Colors.blue,
-                        size: 48,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      gesture.name,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      gesture.description,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Current Action',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            gesture.assignedAction ?? 'Not assigned',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AssignActionScreen(
-                                  gesture: gesture,
-                                ),
-                              ),
-                            );
-                            if (result != null && result is String) {
-                              final updatedGesture = gesture.copyWith(
-                                assignedAction: result,
-                              );
-                              onGestureUpdated(index, updatedGesture);
-                              Navigator.pop(context);
-                            }
-                          },
-                          icon: const Icon(Icons.edit),
-                          label: const Text('Change'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryBlue,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
+        child: Row(
+          children: [
+            // 手势名称
+            Expanded(
+              flex: 4,
+              child: Text(
+                item.gesture,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            // 操作名称
+            Expanded(
+              flex: 5,
+              child: Text(
+                item.action,
+                style: TextStyle(
+                  color: Colors.blue.shade400,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.right,
+              ),
+            ),
+            const SizedBox(width: 4),
+
+            Icon(
+              Icons.keyboard_arrow_right,
+              color:  Colors.grey.shade600,
+              size: 22,
+            ),
+
+          ],
+        ),
+      ),
+    ),
+    );
+  }
+
+  Widget _buildPopupOverlay(BuildContext context, int index) {
+    final item = _gestures[index];
+    final options = GestureMapping.getActionOptions(item.gesture);
+
+    return Positioned(
+      left: 16,
+      right: 16,
+      top: _getCardTopPosition(index),
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8), // 🔑 整个弹出框上下内边距
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A2332),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.blue.shade400.withOpacity(0.4),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: Colors.blue.shade400.withOpacity(0.1),
+                blurRadius: 30,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 标题
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+
+                child: Row(
+                  children: [
+                    const SizedBox(width: 8),
+                    Text(
+                      'Assign action: ${item.gesture}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 选项列表
+              ...options.map((action) {
+                final isSelected = action == item.action;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      final idx = _gestures.indexOf(item);
+                      saveGesture(_gestures[idx].gesture, action);
+
+                      debugPrint("getKeygroupValue: ${GestureMapping.getKeygroupValue(_gestures[idx].gesture)}");
+                      debugPrint("getTargetValue: ${GestureMapping.getTargetValue(action)}");
+                      DeviceControlManager.instance.setGestureAction(GestureMapping.getKeygroupValue(_gestures[idx].gesture), GestureMapping.getTargetValue(action));
+
+                      _gestures[idx] = GestureItem(
+                        gesture: item.gesture,
+                        action: action,
+                      );
+                      _expandedIndex = null;
+                    });
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.blue.shade400.withOpacity(0.12)
+                          : Colors.white.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected
+                            ? Colors.blue.shade400.withOpacity(0.5)
+                            : Colors.white.withOpacity(0.06),
+                        width: isSelected ? 1.5 : 1,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                        BoxShadow(
+                          color: Colors.blue.shade400.withOpacity(0.15),
+                          blurRadius: 8,
+                          spreadRadius: 0,
+                        ),
+                      ]
+                          : [],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            action,
+                            style: TextStyle(
+                              color: isSelected ? Colors.blue.shade400 : Colors.white,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        if (isSelected)
+                          Icon(
+                            Icons.check,
+                            color: Colors.blue.shade400,
+                            size: 18,
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
+        ),
       ),
     );
   }
+
+  double _getCardTopPosition(int index) {
+    // 计算卡片顶部位置
+    final appBarHeight = kToolbarHeight + MediaQuery.of(context).padding.top;
+    final padding = 12.0;
+    final cardHeight = 70.0;
+    final spacing = 12.0;
+
+
+    final top = appBarHeight + padding + (index * (cardHeight + spacing));
+
+
+    final mediaQuery = MediaQuery.of(context);
+
+    // 1. 屏幕总高度（包含导航键）
+    double totalHeight = mediaQuery.size.height;
+
+    // 4. 底部导航键高度
+    double navigationBarHeight = mediaQuery.padding.bottom;
+
+    double screenHeight =totalHeight - navigationBarHeight;
+
+    final options = GestureMapping.getActionOptions(_gestures[index].gesture);
+    final popupHeight = _estimatePopupHeight(options.length);
+
+    debugPrint("_getCardTopPosition: navigationBarHeight=$navigationBarHeight");
+
+    debugPrint("_getCardTopPosition: top=$top, screenHeight=$screenHeight, popupHeight=$popupHeight");
+
+    if((top + popupHeight + 10) > screenHeight){
+      return top - (cardHeight + spacing) - popupHeight;
+    }else{
+      return top;
+    }
+
+  }
+
+  // 🔑 估算弹出框高度
+  double _estimatePopupHeight(int optionCount) {
+    double height = 52.0; // 标题
+    height += 16.0; // 顶部 padding
+    height += optionCount * 56.0; // 每个选项
+    height += 16.0; // 底部 padding
+    return height;
+  }
+
+  static List<GestureItem> getGestures() {
+    String doubleTap = StorageService().getDoubleTap();
+    debugPrint("getGestures: doubleTap=$doubleTap");
+    if(doubleTap == null || doubleTap.isEmpty){
+      doubleTap = 'Start/Exit Slideshow';
+    }
+    String tripleTap = StorageService().getTripleTap();
+    debugPrint("getGestures: tripleTap=$tripleTap");
+    if(tripleTap == null || tripleTap.isEmpty){
+      tripleTap = 'Zoom In/Out';
+    }
+    String swipeUp = StorageService().getSwipeUpThreeSec();
+    debugPrint("getGestures: swipeUp=$swipeUp");
+    if(swipeUp == null || swipeUp.isEmpty){
+      swipeUp = 'Backward 30 seconds';
+    }
+    String swipeDown = StorageService().getSwipeDownThreeSec();
+    debugPrint("getGestures: swipeDown=$swipeDown");
+    if(swipeDown == null || swipeDown.isEmpty){
+      swipeDown = 'Backward 30 seconds';
+    }
+    String swipeLeft = StorageService().getSwipeLeftThreeSec();
+    debugPrint("getGestures: swipeLeft=$swipeLeft");
+    if(swipeLeft == null || swipeLeft.isEmpty){
+      swipeLeft = 'Skip 30 seconds';
+    }
+    String swipeRight = StorageService().getSwipeRightThreeSec();
+    debugPrint("getGestures: swipeRight=$swipeRight");
+    if(swipeRight == null || swipeRight.isEmpty){
+      swipeRight = 'Backward 30 seconds';
+    }
+    return [
+      GestureItem(gesture: 'Double Tap', action: doubleTap),
+      GestureItem(gesture: 'Triple Tap', action: tripleTap),
+      GestureItem(gesture: 'Swipe Up + Hold 3s', action: swipeUp),
+      GestureItem(gesture: 'Swipe Down + Hold 3s', action: swipeDown),
+      GestureItem(gesture: 'Swipe Left + Hold 3s', action: swipeLeft),
+      GestureItem(gesture: 'Swipe Right + Hold 3s', action: swipeRight),
+    ];
+  }
+
+  static void saveGesture(String gesture, String action) {
+    switch(gesture){
+      case "Double Tap":{
+        StorageService().saveDoubleTap(action);
+      }
+      case "Triple Tap":{
+        StorageService().saveTripleTap(action);
+      }
+      case "Swipe Up + Hold 3s":{
+        StorageService().saveSwipeUpThreeSec(action);
+      }
+      case "Swipe Down + Hold 3s":{
+        StorageService().saveSwipeDownThreeSec(action);
+      }
+      case "Swipe Left + Hold 3s":{
+        StorageService().saveSwipeLeftThreeSec(action);
+      }
+      case "Swipe Right + Hold 3s":{
+        StorageService().saveSwipeRightThreeSec(action);
+      }
+    }
+  }
+
+  @override
+  void onSetGestureStatus(bool status) {
+    debugPrint("onGetGestureValue: status=$status");
+  }
+
+  @override
+  void onGetGestureValue(int group, int value) {
+      String gesture = GestureMapping.getGestureName(group);
+      String action = GestureMapping.getActionName(value);
+      debugPrint("onGetGestureValue: gesture=$gesture");
+      debugPrint("onGetGestureValue: action=$action");
+      saveGesture(gesture, action);
+      _gestures = getGestures();
+  }
+}
+
+@immutable
+class GestureItem {
+  final String gesture;
+  final String action;
+
+  const GestureItem({
+    required this.gesture,
+    required this.action,
+  });
 }

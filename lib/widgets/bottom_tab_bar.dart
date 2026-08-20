@@ -15,9 +15,9 @@ class BottomTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity, // 水平方向填充
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -52,33 +52,34 @@ class BottomTabBar extends StatelessWidget {
   }) {
     final isSelected = selectedTab == tab;
 
-    return GestureDetector(
-      onTap: () => onTabChanged(tab),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryBlue : Colors.transparent,
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : Colors.grey[600],
-              size: 20,
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTabChanged(tab),
+        child: Container(
+          color: Colors.transparent,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? Colors.blue : Colors.grey[600],
+                  size: 24,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    color: isSelected ? Colors.blue : Colors.grey[600],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? Colors.white : Colors.grey[600],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -2,11 +2,13 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_bee_project/services/bluetooth/omni_gatt_manager.dart';
 import 'defines.dart';
 import 'image_manager.dart';
 import '../bluetooth/omni_ble.dart';
 import 'defines.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'omni_gatt_manager.dart';
 
 /// OTA 回调接口
 abstract class OTACallback {
@@ -20,13 +22,16 @@ abstract class OTACallback {
   void onFirmwareUpToDate(String rcuVer);
   void onFirmwareUpdating(int current, int total, int repeatCount);
   void onFirmwareUpdateResult(String result);
+  void onGattConnectionStateChanged(int state);
 }
 
 /// OTA 管理器
 class OTAManager {
-  static const String TAG = "OMNI.OTA.OTAManager";
+  static const String TAG = "OMNI.BEE.OTAManager";
 
-  late final OmniBle _omniBle;
+  static final OTAManager _instance = OTAManager._internal();
+  static OTAManager get instance => _instance;
+
   late final ImageManager _imageManager;
 
   OTACallback? _callback;
@@ -55,23 +60,31 @@ class OTAManager {
 
   late ImageCallback _imageCallback;
 
-  late OmniBleCallback _omniBleCallback;
+  late _OmniGattCallbackImpl _omniBleCallback;
 
-  OTAManager() {
+  // 私有构造函数
+  OTAManager._internal() {
+    _init();
+  }
+
+  // 防止外部实例化
+  factory OTAManager() {
+    return _instance;
+  }
+
+  void _init() {
     _imageManager = ImageManager();
     _imageCallback = _ImageCallbackImpl(this);
-    _omniBleCallback = _OmniBleCallbackImpl(this);
+    _omniBleCallback = _OmniGattCallbackImpl(this);
     _imageManager.registerCallback(_imageCallback);
-    _omniBle = OmniBle();
-    _omniBle.registerCallback(_omniBleCallback);
+    OmniGattManager.instance.registerOTACallback(_omniBleCallback);
   }
 
   void release() {
     _reconnectTimer?.cancel();
-    _omniBle.unregisterCallback();
-    _omniBle.disconnectGatt();
     _imageManager.unregisterCallback();
     _imageManager.release();
+    OmniGattManager.instance.unregisterOTACallback();
   }
 
   void registerCallback(OTACallback callback) {
@@ -82,20 +95,27 @@ class OTAManager {
     _callback = null;
   }
 
-  void findOmniOTADevice() {
-    debugPrint("$TAG findOmniOTADevice");
-    if (_gattStatus == Defines.STATE_GATT_CONNECTED) return;
-    _omniBle.findOmniRemote();
+  void connectOmniDevice() {
+    debugPrint("$TAG connectOmniDevice");
+    if (_gattStatus == Defines.STATE_GATT_CONNECTED) {
+        _callback?.onGattConnectionStateChanged(_gattStatus);
+        _getRcuInfo();
+       return;
+    }
+
+    if (_gattStatus == Defines.STATE_GATT_DISCONNECTED) {
+      OmniGattManager.instance.connectOmniDevice();
+    }
   }
 
-  void findOmniOTADeviceByName(String name) {
-    debugPrint("$TAG findOmniOTADeviceByName: name=$name");
-    _omniBle.findOmniRemoteByName(name);
+  void connectOmniDeviceByName(String name) {
+    debugPrint("$TAG connectOmniDeviceByName: name=$name");
+    OmniGattManager.instance.connectOmniDeviceByName(name);
   }
 
   void disconnectGatt() {
     debugPrint("$TAG disconnectGatt");
-    _omniBle.disconnectGatt();
+    OmniGattManager.instance.disconnectGatt();
   }
 
   void startOTA() {
@@ -135,6 +155,7 @@ class OTAManager {
   // ==================== 私有方法 ====================
 
   void _getRcuInfo() {
+    debugPrint("$TAG _getRcuInfo");
     final bytes = Uint8List.fromList([
       Defines.CMD_HEADER,
       Defines.CMD_HOST_GET_REMOTE_INFO,
@@ -323,14 +344,7 @@ class OTAManager {
   }
 
   Future<bool> _writeData(String uuid, Uint8List bytes) async {
-    /*if (uuid.toLowerCase() ==
-        Defines.UUID_OTA_COMMAND.toLowerCase()) {
-      debugPrint("$TAG writeData: uuid=$uuid, data=${_dump(bytes)}");
-    }*/
-
-    //debugPrint("$TAG writeData: uuid=$uuid, data=${_dump(bytes)}");
-
-    return await _omniBle.writeData(Defines.UUID_OTA_SERV, uuid, bytes);
+    return await  OmniGattManager.instance.writeData(Defines.UUID_OTA_SERV, uuid, bytes);
   }
 
   String _dump(Uint8List bytes) {
@@ -361,10 +375,10 @@ class _ImageCallbackImpl implements ImageCallback {
 }
 
 /// OmniBle 回调实现
-class _OmniBleCallbackImpl implements OmniBleCallback {
+class _OmniGattCallbackImpl implements OmniGattCallback {
   final OTAManager _manager;
 
-  _OmniBleCallbackImpl(this._manager);
+  _OmniGattCallbackImpl(this._manager);
 
   @override
   void onDeviceNotFound() {
@@ -372,16 +386,16 @@ class _OmniBleCallbackImpl implements OmniBleCallback {
   }
 
   @override
-  void onDeviceBondStateChanged(BluetoothDevice device, int state) {}
+  void onDeviceBondStateChanged(int state) {}
 
   @override
-  void onDeviceConnectionStateChanged(BluetoothDevice device, int state) {
-    _manager._handleDeviceConnectionStateChanged(device, state);
+  void onDeviceConnectionStateChanged( int state) {
+    //_manager._handleDeviceConnectionStateChanged(state);
   }
 
   @override
-  void onGattConnectionStateChanged(BluetoothDevice device, int state) {
-    _manager._handleGattConnectionStateChanged(device, state);
+  void onGattConnectionStateChanged(int state) {
+    _manager._handleGattConnectionStateChanged(state);
   }
 
   @override
@@ -437,14 +451,14 @@ extension OTAManagerHandlers on OTAManager {
     _callback?.onDeviceNotFound();
   }
 
-  void _handleDeviceConnectionStateChanged(BluetoothDevice device, int state) {
-    // 设备连接状态变化，state: 2 = CONNECTED
-    if (state == 2 && _gattStatus == Defines.STATE_GATT_DISCONNECTED) {
-      findOmniOTADevice();
-    }
+  void _handleDeviceConnectionStateChanged(int state) {
+   /* if (state == 2 && _gattStatus == Defines.STATE_GATT_DISCONNECTED) {
+      connectOmniDevice();
+    }*/
   }
 
-  void _handleGattConnectionStateChanged(BluetoothDevice device, int state) {
+  void _handleGattConnectionStateChanged(int state) {
+    debugPrint("$OTAManager.TAG _handleGattConnectionStateChanged = $state");
     _gattStatus = state;
     if (state == Defines.STATE_GATT_CONNECTED) {
       _retryTimes = Defines.MAX_RETRY_TIMES;
@@ -454,6 +468,8 @@ extension OTAManagerHandlers on OTAManager {
     } else if (state == Defines.STATE_GATT_DISCONNECTED) {
       _otaInProgress = false;
     }
+
+    _callback?.onGattConnectionStateChanged(state);
   }
 
   void _handleCharacteristicWrite(OmniBluetoothGattCharacteristic characteristic) {
