@@ -109,7 +109,12 @@ class OmniBle {
     debugPrint("$TAG findOmniRemote");
 
     // 获取已配对的设备
-    _connectedDeviceList = await FlutterBluePlus.connectedSystemDevices;
+    try {
+      _connectedDeviceList = await FlutterBluePlus.connectedSystemDevices;
+    } catch (e) {
+      debugPrint("$TAG findOmniRemote: failed - $e");
+    }
+
     await _connectDevice();
   }
 
@@ -267,11 +272,25 @@ class OmniBle {
       return;
     }
 
+    debugPrint("$TAG Total devices: ${_connectedDeviceList.length}");
+
     if (_connectedDeviceList.isEmpty) {
+      debugPrint("$TAG No devices found");
+      return;
+    }
+
+
+    if (_connectedDeviceList.isEmpty) {
+      debugPrint("$TAG No devices found");
       if (_callback != null) {
         _callback!.onDeviceNotFound();
       }
       return;
+    }
+
+    for (int i = 0; i < _connectedDeviceList.length; i++) {
+      final device = _connectedDeviceList[i];
+      debugPrint("$TAG [$i] ${device.platformName} ");
     }
 
     // 按名称筛选设备
