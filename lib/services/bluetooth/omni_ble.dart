@@ -110,7 +110,8 @@ class OmniBle {
 
     // 获取已配对的设备
     try {
-      _connectedDeviceList = await FlutterBluePlus.connectedSystemDevices;
+      //_connectedDeviceList = await FlutterBluePlus.connectedSystemDevices;
+      _connectedDeviceList = await FlutterBluePlus.systemDevices([Guid(Defines.UUID_OTA_SERV)]);
     } catch (e) {
       debugPrint("$TAG findOmniRemote: failed - $e");
     }
