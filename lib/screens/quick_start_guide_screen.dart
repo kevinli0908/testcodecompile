@@ -27,6 +27,34 @@ class _QuickStartGuidePageState extends State<QuickStartGuidePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(
+        leading: Container(
+          width: 32,
+          height: 32,
+          margin: const EdgeInsets.only(left: 16),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withOpacity(0.06),
+            border: Border.all(color: Colors.white.withOpacity(0.16), width: 1),
+          ),
+          child: IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: ImageIcon(
+              AssetImage('assets/images/icon_004.png'),
+              size: 20,
+              color: Colors.white,
+            ),
+            padding: EdgeInsets.zero,
+          ),
+        ),
+
+        title: const Text('Quick Start Guide'),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+        titleSpacing: 12,
+      ),
+
       body: Stack(
         children: [
           // PageView
