@@ -201,7 +201,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen>  with Autom
   }
 
   bool get _availableUpdate{
-/*      if(_currentVersion == null || _currentVersion.isEmpty){
+      if(_currentVersion == null || _currentVersion.isEmpty){
         return false;
       }
 
@@ -213,8 +213,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen>  with Autom
         return true;
       }
 
-      return false;*/
-      return true;
+      return false;
   }
 
   bool get _isCanPressUpdate{

@@ -198,7 +198,7 @@ class _TouchControllerScreenState extends State<TouchControllerScreen>{
         children: [
           const SizedBox(height: 40),
           const Text(
-            'Bee Companion App',
+            'nabi companion app',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
