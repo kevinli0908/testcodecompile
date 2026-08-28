@@ -79,6 +79,10 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen>  with Autom
     // 升级完成，重置进度
     if (mounted) {
       setState(() {
+        if(result == "ota completed successfully"){
+            _currentVersion = _newVersion;
+            _saveDeviceStatus();
+        }
         _isUpgrading = false;
         _upgradeProgress = 0.0;
       });
